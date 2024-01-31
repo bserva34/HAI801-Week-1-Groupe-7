@@ -2,6 +2,8 @@
 #include <vector>
 #include <queue>
 #include <climits>
+#include <stack>
+#include <algorithm>
 
 class Node {
 public:
@@ -26,17 +28,18 @@ public:
         return -1;
     }
 
-    int aStar(int startNode, int goalNode) {
+    bool aStar(int startNode, int goalNode, std::vector<int>& solutionPath) {
         std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> openSet;
         std::vector<int> gValues(nodes.size(), INT_MAX);
         std::vector<bool> visited(nodes.size(), false);
+        std::vector<int> parents(nodes.size(), -1);
 
         int startIdx = findIndex(startNode);
         int goalIdx = findIndex(goalNode);
 
         if (startIdx == -1 || goalIdx == -1) {
             std::cerr << "Invalid start or goal node." << std::endl;
-            return -1;
+            return false;
         }
 
         openSet.push({0, startIdx});
@@ -47,7 +50,14 @@ public:
             openSet.pop();
 
             if (currentIdx == goalIdx) {
-                return gValues[currentIdx];
+                // Reconstruct the path
+                int node = goalIdx;
+                while (node != -1) {
+                    solutionPath.push_back(node);
+                    node = parents[node];
+                }
+                std::reverse(solutionPath.begin(), solutionPath.end());
+                return true;
             }
 
             if (visited[currentIdx]) {
@@ -62,12 +72,13 @@ public:
 
                 if (!visited[neighborIdx] && gValues[currentIdx] + edgeCost < gValues[neighborIdx]) {
                     gValues[neighborIdx] = gValues[currentIdx] + edgeCost;
+                    parents[neighborIdx] = currentIdx;
                     openSet.push({gValues[neighborIdx], neighborIdx});
                 }
             }
         }
 
-        return -1;  // No path found
+        return false;  // No path found
     }
 };
 
@@ -107,10 +118,16 @@ int main() {
     std::cout << "Graph created" << std::endl;
 
     // Call the aStar method
-    int result = graph.aStar(1, 8);
+    std::vector<int> solutionPath;
+    bool result = graph.aStar(1, 8, solutionPath);
 
-    if (result != -1) {
-        std::cout << "Shortest path cost: " << result << std::endl;
+    if (result) {
+        std::cout << "Shortest path cost: " << solutionPath.size() - 1 << std::endl;
+        std::cout << "Shortest path: ";
+        for (int node : solutionPath) {
+            std::cout << node << " ";
+        }
+        std::cout << std::endl;
     } else {
         std::cout << "No path found." << std::endl;
     }
