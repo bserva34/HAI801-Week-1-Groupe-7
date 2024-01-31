@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A* Algorithm Visualization</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <h1>A* Algorithm Visualization</h1>
+    <svg id="graph" width="500" height="300"></svg>
+    <pre id="result"></pre>
+
+    <script>
+        // Paste the JavaScript code here
+
+        class Node {
+            constructor(name, cost) {
+                this.name = name;
+                this.cost = cost;
+                this.neighbors = [];
+                this.cost_neighbors = [];
+            }
+        }
+
+        class Graph {
+            constructor() {
+                this.nodes = [];
+            }
+
+            findIndex(nodeName) {
+                for (let i = 0; i < this.nodes.length; ++i) {
+                    if (this.nodes[i].name === nodeName) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            aStar(startNode, goalNode) {
+                const openSet = new MinHeap();
+                const gValues = Array(this.nodes.length).fill(Number.MAX_SAFE_INTEGER);
+                const visited = Array(this.nodes.length).fill(false);
+                const parents = Array(this.nodes.length).fill(-1);
+
+                const startIdx = this.findIndex(startNode);
+                const goalIdx = this.findIndex(goalNode);
+
+                if (startIdx === -1 || goalIdx === -1) {
+                    console.error("Invalid start or goal node.");
+                    return [];
+                }
+
+                openSet.push({ cost: 0, index: startIdx });
+                gValues[startIdx] = 0;
+
+                while (!openSet.isEmpty()) {
+                    const { cost: currentCost, index: currentIdx } = openSet.pop();
+
+                    if (currentIdx === goalIdx) {
+                        // Reconstruct the path
+                        const path = [];
+                        let node = goalIdx;
+                        while (node !== -1) {
+                            path.push(node);
+                            node = parents[node];
+                        }
+                        return path.reverse();
+                    }
+
+                    if (visited[currentIdx]) {
+                        continue;
+                    }
+
+                    visited[currentIdx] = true;
+
+                    for (let i = 0; i < this.nodes[currentIdx].neighbors.length; ++i) {
+                        const neighborIdx = this.findIndex(this.nodes[currentIdx].neighbors[i].name);
+                        const edgeCost = this.nodes[currentIdx].cost_neighbors[i];
+
+                        if (!visited[neighborIdx] && gValues[currentIdx] + edgeCost < gValues[neighborIdx]) {
+                            gValues[neighborIdx] = gValues[currentIdx] + edgeCost;
+                            parents[neighborIdx] = currentIdx;
+                            openSet.push({ cost: gValues[neighborIdx], index: neighborIdx });
+                        }
+                    }
+                }
+
+                return [];  // No path found
+            }
+        }
+
+        class MinHeap {
+            constructor() {
+                this.heap = [];
+            }
+
+            push(element) {
+                this.heap.push(element);
+                this.heapifyUp();
+            }
+
+            pop() {
+                if (this.isEmpty()) {
+                    return null;
+                }
+
+                const root = this.heap[0];
+                const lastElement = this.heap.pop();
+
+                if (this.heap.length > 0) {
+                    this.heap[0] = lastElement;
+                    this.heapifyDown();
+                }
+
+                return root;
+            }
+
+            isEmpty() {
+                return this.heap.length === 0;
+            }
+
+            heapifyUp() {
+                let index = this.heap.length - 1;
+
+                while (index > 0) {
+                    const parentIndex = Math.floor((index - 1) / 2);
+                    if (this.heap[index].cost < this.heap[parentIndex].cost) {
+                        [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
+                        index = parentIndex;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            heapifyDown() {
+                let index = 0;
+
+                while (true) {
+                    const leftChildIndex = 2 * index + 1;
+                    const rightChildIndex = 2 * index + 2;
+                    let smallestChildIndex = index;
+
+                    if (leftChildIndex < this.heap.length && this.heap[leftChildIndex].cost < this.heap[smallestChildIndex].cost) {
+                        smallestChildIndex = leftChildIndex;
+                    }
+
+                    if (rightChildIndex < this.heap.length && this.heap[rightChildIndex].cost < this.heap[smallestChildIndex].cost) {
+                        smallestChildIndex = rightChildIndex;
+                    }
+
+                    if (smallestChildIndex !== index) {
+                        [this.heap[index], this.heap[smallestChildIndex]] = [this.heap[smallestChildIndex], this.heap[index]];
+                        index = smallestChildIndex;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Main function
+        const graph = new Graph();
+
+        // Creating nodes
+        for (let i = 0; i < 8; ++i) {
+            graph.nodes.push(new Node(String.fromCharCode(65 + i), 0));
+        }
+
+        // Adding edges and costs
+        graph.nodes[0].neighbors = [graph.nodes[1], graph.nodes[3], graph.nodes[2]];
+        graph.nodes[0].cost_neighbors = [2, 3, 10];
+
+        graph.nodes[1].neighbors = [graph.nodes[4]];
+        graph.nodes[1].cost_neighbors = [8];
+
+        graph.nodes[2].neighbors = [graph.nodes[6]];
+        graph.nodes[2].cost_neighbors = [2];
+
+        graph.nodes[3].neighbors = [graph.nodes[2], graph.nodes[5]];
+        graph.nodes[3].cost_neighbors = [2, 4];
+
+        graph.nodes[4].neighbors = [graph.nodes[5], graph.nodes[7], graph.nodes[6]];
+        graph.nodes[4].cost_neighbors = [2, 3, 10];
+
+        graph.nodes[5].neighbors = [graph.nodes[4], graph.nodes[6], graph.nodes[7]];
+        graph.nodes[5].cost_neighbors = [5, 4, 5];
+
+        graph.nodes[6].neighbors = [graph.nodes[2], graph.nodes[5], graph.nodes[7]];
+        graph.nodes[6].cost_neighbors = [2, 5, 1];
+
+        graph.nodes[7].neighbors = [graph.nodes[4], graph.nodes[5]];
+        graph.nodes[7].cost_neighbors = [10, 1];
+
+        const resultElement = document.getElementById('result');
+
+        // Call the aStar method
+        const solutionPath = graph.aStar("A", "H");
+
+        if (solutionPath.length > 0) {
+            resultElement.textContent = `Shortest path cost: ${solutionPath.length - 1}\nShortest path: ${solutionPath.join(" ")}`;
+        } else {
+            resultElement.textContent = "No path found.";
+        }
+
+        function visualizeGraph() {
+            const svg = d3.select('#graph');
+            svg.selectAll('*').remove(); // Clear previous visualization
+
+            // Define node positions
+            const nodePositions = [
+                { x: 100, y: 50 },
+                { x: 50, y: 100 },
+                { x: 150, y: 100 },
+                { x: 100, y: 100 },
+                { x: 50, y: 150 },
+                { x: 100, y: 150 },
+                { x: 150, y: 150 },
+                { x: 100, y: 200 },
+            ];
+
+            // Draw edges
+            for (let i = 0; i < graph.nodes.length; ++i) {
+                const currentNode = graph.nodes[i];
+                const currentNodePosition = nodePositions[i];
+
+                for (let j = 0; j < currentNode.neighbors.length; ++j) {
+                    const neighborNode = currentNode.neighbors[j];
+                    const neighborNodeIndex = graph.findIndex(neighborNode.name);
+                    const neighborNodePosition = nodePositions[neighborNodeIndex];
+
+                    svg.append('line')
+                        .attr('x1', currentNodePosition.x)
+                        .attr('y1', currentNodePosition.y)
+                        .attr('x2', neighborNodePosition.x)
+                        .attr('y2', neighborNodePosition.y)
+                        .attr('stroke', 'black');
+                }
+            }
+
+            // Draw nodes
+            svg.selectAll('circle')
+                .data(nodePositions)
+                .enter().append('circle')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', 10)
+                .attr('fill', 'blue');
+
+            // Draw labels
+            svg.selectAll('text')
+                .data(graph.nodes)
+                .enter().append('text')
+                .attr('x', (d, i) => nodePositions[i].x)
+                .attr('y', (d, i) => nodePositions[i].y)
+                .attr('text-anchor', 'middle')
+                .attr('dy', '0.35em')
+                .text(d => d.name)
+                .attr('fill', 'white');
+
+            // Call the aStar method
+            const solutionPath = graph.aStar("A", "H");
+
+            if (solutionPath.length > 0) {
+                d3.select('#result').text(`Shortest path cost: ${solutionPath.length - 1}\nShortest path: ${solutionPath.join(" ")}`);
+            } else {
+                d3.select('#result').text("No path found.");
+            }
+
+            // Highlight the path
+            for (let i = 0; i < solutionPath.length - 1; ++i) {
+                const sourceIndex = solutionPath[i];
+                const targetIndex = solutionPath[i + 1];
+
+                const sourcePosition = nodePositions[sourceIndex];
+                const targetPosition = nodePositions[targetIndex];
+
+                svg.append('line')
+                    .attr('x1', sourcePosition.x)
+                    .attr('y1', sourcePosition.y)
+                    .attr('x2', targetPosition.x)
+                    .attr('y2', targetPosition.y)
+                    .attr('stroke', 'red');
+            }
+        }
+
+        // Initial visualization
+        visualizeGraph();
+    </script>
+</body>
+</html>
